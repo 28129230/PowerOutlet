@@ -1,11 +1,11 @@
 package nuzar.poweroutlet;
 
 import android.app.Activity;
-import android.bluetooth.BluetoothA2dp;
 import android.content.Intent;
+import android.os.Handler;
+import android.os.Message;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.bluetooth.BluetoothAdapter;
@@ -16,6 +16,13 @@ public class MainActivity extends ActionBarActivity {
 
     private BluetoothAdapter mBluetoothAdapter = null;
     private static final int REQUEST_ENABLE_BT = 1;
+    private static final String DeviceName = "NuzarSmartPlugs";
+    private DeviceControl mDeviceControl;
+    public static final int MESSAGE_TOAST = 1;
+    public static final int MESSAGE_NOT_BONDED = 2;
+    public static final String TOAST = "toast";
+
+
 
 
     @Override
@@ -32,26 +39,56 @@ public class MainActivity extends ActionBarActivity {
     @Override
     public void onStart(){
         super.onStart();
+        mDeviceControl = new DeviceControl(DeviceName,mHandler);
         if(!mBluetoothAdapter.isEnabled()){
             Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             startActivityForResult(enableIntent, REQUEST_ENABLE_BT);
         }else{
-            Toast.makeText(this, "Bt_enable", Toast.LENGTH_SHORT).show();
+            mDeviceControl.setup();
         }
+    }
 
+    @Override
+    public synchronized void onResume(){
+        super.onResume();
+        mDeviceControl.start();
+    }
+
+    @Override
+    public synchronized void onPause(){
+        super.onPause();
+        mDeviceControl.stop();
 
     }
+
+
 
     public void onActivityResult(int requestCode, int resultCode, Intent data){
         switch (requestCode){
             case REQUEST_ENABLE_BT:
                 if(resultCode == Activity.RESULT_OK){
-                    Toast.makeText(this, "Bt_enable", Toast.LENGTH_SHORT).show();
+                    mDeviceControl.setup();
                 }else{
                     Toast.makeText(this, R.string.bt_not_enabled_leaving, Toast.LENGTH_SHORT).show();
                 }
         }
     }
+
+
+
+    private final Handler mHandler = new Handler(){
+        @Override
+        public void handleMessage(Message msg){
+            switch (msg.what){
+                case MESSAGE_TOAST:
+                    Toast.makeText(getApplicationContext(), msg.getData().getString(TOAST),Toast.LENGTH_LONG).show();
+                case MESSAGE_NOT_BONDED:
+                    Intent mIntent = new Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS);
+                    startActivity(mIntent);
+            }
+
+        }
+    };
 
 
     @Override
